@@ -538,6 +538,11 @@ func (s *HttpServer) startSupervisor(w http.ResponseWriter, r *http.Request) {
 	}
 
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				s.logger.Error(fmt.Sprintf("panic in startSupervisor goroutine for %s: %v", Supervisor, r))
+			}
+		}()
 		if err := s.manager.Start(Supervisor, false); err != nil {
 			s.logger.Error(fmt.Sprintf("error starting supervisor %s: %s", Supervisor, err.Error()))
 		}

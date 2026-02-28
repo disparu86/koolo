@@ -125,6 +125,11 @@ func (mng *SupervisorManager) Start(supervisorName string, attachToExisting bool
 
 	// Run supervisor in a goroutine so Start() returns immediately and the HTTP handler can respond
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				mng.logger.Error(fmt.Sprintf("panic in supervisor %s: %v", supervisorName, r))
+			}
+		}()
 		if err := supervisor.Start(); err != nil {
 			mng.logger.Error(fmt.Sprintf("error running supervisor %s: %s", supervisorName, err.Error()))
 		}

@@ -13,7 +13,10 @@
       "Bash(go build ./...)",
       "Bash(go build -trimpath -tags static -ldflags=\"-s -w -H windowsgui\" -o koolo_new.exe ./cmd/koolo)",
       "Bash(tasklist)",
-      "Bash(go build -o build/koolo_new.exe ./cmd/koolo)"
+      "Bash(go build -o build/koolo_new.exe ./cmd/koolo)",
+      "Bash(xargs grep \"buildSupervisor\")",
+      "Bash(xargs grep -n \"go buildSupervisor\\\\|go.*buildSupervisor\")",
+      "Bash(xargs grep -l \"type Data struct\")"
     ]
   }
 }

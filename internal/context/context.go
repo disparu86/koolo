@@ -84,9 +84,12 @@ func NewContext(name string) *Status {
 		},
 		CurrentGame: NewGameHelper(),
 	}
+	mu.Lock()
 	botContexts[getGoroutineID()] = &Status{Priority: PriorityNormal, Context: ctx}
+	result := botContexts[getGoroutineID()]
+	mu.Unlock()
 
-	return botContexts[getGoroutineID()]
+	return result
 }
 
 func NewGameHelper() *CurrentGameHelper {
