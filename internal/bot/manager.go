@@ -3,6 +3,7 @@ package bot
 import (
 	"fmt"
 	"log/slog"
+	"runtime/debug"
 	"strconv"
 	"sync"
 	"syscall"
@@ -127,7 +128,7 @@ func (mng *SupervisorManager) Start(supervisorName string, attachToExisting bool
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				mng.logger.Error(fmt.Sprintf("panic in supervisor %s: %v", supervisorName, r))
+				mng.logger.Error(fmt.Sprintf("panic in supervisor %s: %v\nStack: %s", supervisorName, r, debug.Stack()))
 			}
 		}()
 		if err := supervisor.Start(); err != nil {
@@ -275,9 +276,27 @@ func (mng *SupervisorManager) buildSupervisor(supervisorName string, logger *slo
 		}
 	}
 
-	gr, err := game.NewGameReader(cfg, supervisorName, pid, hwnd, logger)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error creating game reader: %w", err)
+	// Retry NewGameReader because D2R may not be fully loaded yet.
+	// The d2go library panics when reading process memory before modules are ready.
+	var gr *game.MemoryReader
+	for attempt := range 15 {
+		var readerErr error
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					readerErr = fmt.Errorf("D2R not ready (attempt %d/15): %v", attempt+1, r)
+					logger.Info(readerErr.Error())
+				}
+			}()
+			gr, readerErr = game.NewGameReader(cfg, supervisorName, pid, hwnd, logger)
+		}()
+		if readerErr == nil && gr != nil {
+			break
+		}
+		if attempt == 14 {
+			return nil, nil, fmt.Errorf("failed to create game reader after 15 attempts: %w", readerErr)
+		}
+		time.Sleep(2 * time.Second)
 	}
 
 	gi, err := game.InjectorInit(logger, gr.GetPID())

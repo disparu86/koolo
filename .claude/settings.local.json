@@ -16,7 +16,9 @@
       "Bash(go build -o build/koolo_new.exe ./cmd/koolo)",
       "Bash(xargs grep \"buildSupervisor\")",
       "Bash(xargs grep -n \"go buildSupervisor\\\\|go.*buildSupervisor\")",
-      "Bash(xargs grep -l \"type Data struct\")"
+      "Bash(xargs grep -l \"type Data struct\")",
+      "Bash(xargs grep -l \"buildSupervisor\\\\|buildContext\\\\|Injector\")",
+      "Bash(go list -m -versions github.com/hectorgimenez/d2go)"
     ]
   }
 }

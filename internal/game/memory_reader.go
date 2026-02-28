@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/hectorgimenez/koolo/internal/game/map_client"
 	"github.com/lxn/win"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/sys/windows"
 )
 
 type MemoryReader struct {
@@ -33,6 +35,45 @@ type MemoryReader struct {
 }
 
 func NewGameReader(cfg *config.CharacterCfg, supervisorName string, pid uint32, window win.HWND, logger *slog.Logger) (*MemoryReader, error) {
+	// Pre-check: verify D2R module is accessible before calling d2go
+	// d2go's calculateOffsets() ignores errors and panics on empty memory
+	modules, err := memory.GetProcessModules(pid)
+	if err != nil {
+		return nil, fmt.Errorf("cannot read process modules for PID %d: %w", pid, err)
+	}
+
+	var d2rModule *memory.ModuleInfo
+	for i, m := range modules {
+		if strings.Contains(strings.ToLower(m.ModuleName), "d2r.exe") {
+			d2rModule = &modules[i]
+			break
+		}
+	}
+	if d2rModule == nil {
+		return nil, fmt.Errorf("d2r.exe module not found in process %d (found %d modules)", pid, len(modules))
+	}
+	if d2rModule.ModuleBaseSize == 0 {
+		return nil, fmt.Errorf("d2r.exe module has zero size in process %d", pid)
+	}
+
+	// Verify we can actually read the process memory
+	hProc, err := windows.OpenProcess(windows.PROCESS_VM_READ, false, pid)
+	if err != nil {
+		return nil, fmt.Errorf("cannot open process %d for reading: %w", pid, err)
+	}
+	testBuf := make([]byte, 4)
+	err = windows.ReadProcessMemory(hProc, d2rModule.ModuleBaseAddress, &testBuf[0], 4, nil)
+	windows.CloseHandle(hProc)
+	if err != nil {
+		return nil, fmt.Errorf("cannot read D2R memory at base 0x%X (size %d) for PID %d: %w", d2rModule.ModuleBaseAddress, d2rModule.ModuleBaseSize, pid, err)
+	}
+
+	logger.Info("D2R module verified",
+		slog.Uint64("pid", uint64(pid)),
+		slog.String("base", fmt.Sprintf("0x%X", d2rModule.ModuleBaseAddress)),
+		slog.Uint64("size", uint64(d2rModule.ModuleBaseSize)),
+	)
+
 	process, err := memory.NewProcessForPID(pid)
 	if err != nil {
 		return nil, err

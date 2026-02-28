@@ -2,6 +2,8 @@ module github.com/hectorgimenez/koolo
 
 go 1.23
 
+replace github.com/hectorgimenez/d2go => ./d2go_local
+
 require (
 	github.com/billgraziano/dpapi v0.5.0
 	github.com/bwmarrin/discordgo v0.28.1

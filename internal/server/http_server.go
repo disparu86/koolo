@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"runtime/debug"
 	"slices"
 	"sort"
 	"strconv"
@@ -259,7 +260,16 @@ func (s *HttpServer) attachProcess(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Call manager.Start with the correct arguments, including the HWND
-	go s.manager.Start(characterName, true, uint32(pid), uint32(hwnd))
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				s.logger.Error(fmt.Sprintf("panic in attachSupervisor goroutine for %s: %v\nStack: %s", characterName, r, debug.Stack()))
+			}
+		}()
+		if err := s.manager.Start(characterName, true, uint32(pid), uint32(hwnd)); err != nil {
+			s.logger.Error(fmt.Sprintf("error attaching supervisor %s: %s", characterName, err.Error()))
+		}
+	}()
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]bool{"success": true})
@@ -540,7 +550,7 @@ func (s *HttpServer) startSupervisor(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				s.logger.Error(fmt.Sprintf("panic in startSupervisor goroutine for %s: %v", Supervisor, r))
+				s.logger.Error(fmt.Sprintf("panic in startSupervisor goroutine for %s: %v\nStack: %s", Supervisor, r, debug.Stack()))
 			}
 		}()
 		if err := s.manager.Start(Supervisor, false); err != nil {
