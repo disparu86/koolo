@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="../assets/css/bootstrap-icons.css">
     <script src="../assets/js/Sortable.min.js"></script>
     <script src="../assets/js/character_settings.js"></script>
-    <title>Koolo Settings</title>
+    <title>Koolo 設定</title>
 </head>
 <body>
 <main class="container">
@@ -26,86 +26,86 @@
         </div>
     {{ end }}
     <div class="notification">
-        <h3>General Settings</h3><br>
+        <h3>一般設定</h3><br>
         <form method="post" autocomplete="off" class="compact-form">
             <label {{ if ne .Supervisor "" }}hidden="hidden" {{ end }}>
-                <span>Supervisor name</span>
+                <span>監控名稱</span>
                 <input name="name" placeholder="SuperSorc" value="{{ .Supervisor }}" required/>
             </label>
             <fieldset class="grid">
                 <label>
-                    Class
+                    職業
                     <select name="characterClass">
                         <option value="sorceress" {{ if eq .Config.Character.Class
-                        "sorceress" }}selected{{ end }}>Blizzard Sorceress
+                        "sorceress" }}selected{{ end }}>暴風雪女巫
                         </option>
                         <option value="nova" {{ if eq .Config.Character.Class
-                        "nova" }}selected{{ end }}>Nova Sorceress
+                        "nova" }}selected{{ end }}>新星女巫
                         </option>
                         <option value="hydraorb" {{ if eq .Config.Character.Class
-                        "hydraorb" }}selected{{ end }}>Hydra Orb Sorceress
+                        "hydraorb" }}selected{{ end }}>九頭蛇冰封球女巫
                         </option>
                         <option value="lightsorc" {{ if eq .Config.Character.Class
-                        "lightsorc" }}selected{{ end }}>Lightning Sorceress
+                        "lightsorc" }}selected{{ end }}>閃電女巫
                         </option>
                         <option value="fireballsorc" {{ if eq .Config.Character.Class
-                        "fireballsorc" }}selected{{ end }}>Fireball Sorceress
+                        "fireballsorc" }}selected{{ end }}>火球女巫
                         </option>
                         <option value="hammerdin" {{ if eq .Config.Character.Class
-                        "hammerdin" }}selected{{ end }}>Hammer Paladin
+                        "hammerdin" }}selected{{ end }}>祝福之鎚聖騎士
                         </option>
                         <option value="foh" {{ if eq .Config.Character.Class
-                        "foh" }}selected{{ end }}>FOH Paladin
+                        "foh" }}selected{{ end }}>天堂之拳聖騎士
                         </option>
                         <option value="paladin" {{ if eq .Config.Character.Class
-                        "paladin" }}selected{{ end }}>Paladin (Leveling)
+                        "paladin" }}selected{{ end }}>聖騎士（練等）
                         </option>
                         <option value="sorceress_leveling_lightning" {{ if eq .Config.Character.Class
-                        "sorceress_leveling_lightning" }}selected{{ end }}>Sorc (Leveling as Lightning)
+                        "sorceress_leveling_lightning" }}selected{{ end }}>女巫（閃電練等）
                         </option>
                         <option value="sorceress_leveling" {{ if eq .Config.Character.Class
-                        "sorceress_leveling" }}selected{{ end }}>Sorc (Leveling as Fire)
+                        "sorceress_leveling" }}selected{{ end }}>女巫（火焰練等）
                         </option>
                         <option value="trapsin" {{ if eq .Config.Character.Class
-                        "trapsin" }}selected{{ end }}>Lightning Trapsin
+                        "trapsin" }}selected{{ end }}>閃電陷阱刺客
                         </option>
                         <option value="mosaic" {{ if eq .Config.Character.Class
-                        "mosaic" }}selected{{ end }}>Mosaic Assassin
+                        "mosaic" }}selected{{ end }}>鑲嵌刺客
                         </option>
                         <option value="winddruid" {{ if eq .Config.Character.Class
-                        "winddruid" }}selected{{ end }}>Tornado Druid
+                        "winddruid" }}selected{{ end }}>龍捲風德魯伊
                         </option>
                         <option value="javazon" {{ if eq .Config.Character.Class
-                        "javazon" }}selected{{ end }}>Javazon
+                        "javazon" }}selected{{ end }}>標槍亞馬遜
                         </option>
                         <option value="berserker" {{ if eq .Config.Character.Class
-                        "berserker" }}selected{{ end }}>Berserk Barbarian
+                        "berserker" }}selected{{ end }}>狂戰士野蠻人
                         </option>
                     </select>
                 </label>
                 <label>
-                    Character name
+                    角色名稱
                     <input name="characterName" placeholder="{{ .Config.CharacterName }}"
                            value="{{ .Config.CharacterName }}"/>
                 </label>
             </fieldset>
 
-            <h5>Class-Specific Settings</h5>
+            <h5>職業專屬設定</h5>
             <div id="class-specific-settings">
 
                 <div id="no-settings-message" style="display: none;">
-                    No custom settings available for this class.
+                    此職業無自訂設定。
                 </div>
 
                 <div class="berserker-barb-options" style="display: none;">
                     <fieldset class="grid">
                         <label>
                             <input type="checkbox" name="characterFindItemSwitch" {{ if .Config.Character.BerserkerBarb.FindItemSwitch }}checked{{ end }}/>
-                            Find Item Switch
+                            尋找物品切換
                         </label>
                         <label>
                             <input type="checkbox" name="barbSkipPotionPickupInTravincal" {{if .Config.Character.BerserkerBarb.SkipPotionPickupInTravincal}}checked{{end}}>
-                            Skip potion pickup during Travincal
+                            崔凡克期間跳過拾取藥水
                         </label>
                     </fieldset>
                 </div>
@@ -113,7 +113,7 @@
                 <div class="nova-sorceress-options" style="display: none;">
                     <fieldset class="grid">
                         <label>
-                            Boss Static HP (%)
+                            Boss 靜態力場生命 (%)
                             <input type="number" id="novaBossStaticThreshold" name="novaBossStaticThreshold" min="1" max="100" step="1" value="{{ .Config.Character.NovaSorceress.BossStaticThreshold }}">
                         </label>
                     </fieldset>
@@ -123,23 +123,23 @@
                     <fieldset class="grid">
                         <label>
                             <input type="checkbox" name="mosaicUseTigerStrike" {{ if .Config.Character.MosaicSin.UseTigerStrike }}checked{{ end }}/>
-                            Use Tiger Strike
+                            使用猛虎擊
                         </label>
                         <label>
                             <input type="checkbox" name="mosaicUseCobraStrike" {{ if .Config.Character.MosaicSin.UseCobraStrike }}checked{{ end }}/>
-                            Use Cobra Strike
+                            使用眼鏡蛇打擊
                         </label>
                         <label>
                             <input type="checkbox" name="mosaicUseClawsOfThunder" {{ if .Config.Character.MosaicSin.UseClawsOfThunder }}checked{{ end }}/>
-                            Use Claws of Thunder
+                            使用雷電爪
                         </label>
                         <label>
                             <input type="checkbox" name="mosaicUseBladesOfIce" {{ if .Config.Character.MosaicSin.UseBladesOfIce }}checked{{ end }}/>
-                            Use Blades of Ice
+                            使用冰刃
                         </label>
                         <label>
                             <input type="checkbox" name="mosaicUseFistsOfFire" {{ if .Config.Character.MosaicSin.UseFistsOfFire }}checked{{ end }}/>
-                            Use Fists of Fire
+                            使用火焰拳
                         </label>
                     </fieldset>
                 </div>
@@ -148,33 +148,33 @@
             <fieldset class="grid">
                 <label>
                     <input type="checkbox" name="characterUseTeleport" {{ if .Config.Character.UseTeleport }}checked{{ end }}/>
-                    Use teleport when available
+                    可用時使用傳送
                 </label>
                 <label>
                     <input type="checkbox" name="characterStashToShared" {{ if .Config.Character.StashToShared }}checked{{ end }}/>
-                    Always stash to shared tab
+                    總是存放到共享倉庫
                 </label>
             </fieldset>
             <fieldset class="grid">
                 <label>
                     <input type="checkbox" name="useCentralizedPickit" {{ if .Config.UseCentralizedPickit }}checked{{ end }}/>
-                    Use centralized pickit 
+                    使用集中式撿取
                 </label>
                 <label>
                     <input type="checkbox" name="useCainIdentify" {{ if .Config.Game.UseCainIdentify }}checked{{ end }}/>
-                    Identify with Cain
+                    使用乾恩鑑定
                 </label>
             </fieldset>
             <label>
-                Minimum Gold (will pick up Magic+ to sell for gold if below)
+                最低金幣（低於此值時會撿取魔法以上物品出售）
                 <input min="0" type="number" name="gameMinGoldPickupThreshold"
                        placeholder="{{ .Config.Game.MinGoldPickupThreshold }}"
                        value="{{ .Config.Game.MinGoldPickupThreshold }}"/>
             </label>
-            <h3>Client Settings</h3><br>
+            <h3>客戶端設定</h3><br>
             <fieldset class="grid">
                 <label>
-                    Client launch options (arguments)
+                    客戶端啟動選項（參數）
                     <input name="commandLineArgs" placeholder="{{ .Config.CommandLineArgs }}"
                            value="{{ .Config.CommandLineArgs }}"/>
                 </label>
@@ -182,74 +182,74 @@
             <fieldset class="grid">
                 <label>
                     <input id="kill_d2_process" type="checkbox" name="kill_d2_process" {{ if .Config.KillD2OnStop }}checked{{ end }}/>
-                    Kill D2 process on bot stop
+                    停止機器人時關閉 D2 程序
                 </label>
                 <label>
                     <input id="classic_mode" type="checkbox" name="classic_mode" {{ if .Config.ClassicMode }}checked{{ end }}/>
-                    Use Classic Mode (Legacy Graphics)
+                    使用經典模式（傳統畫面）
                 </label>
                 <label>
                     <input id="close_mini_panel" type="checkbox" name="close_mini_panel" {{ if .Config.CloseMiniPanel }}checked{{ end }}/>
-                    Close the mini panel at game start (Legacy Graphics)
+                    遊戲開始時關閉迷你面板（傳統畫面）
                 </label>
                 <label>
                     <input id="hide_portraits" type="checkbox" name="hide_portraits" {{ if .Config.HidePortraits }}checked{{ end }}/>
-                    Hide Portraits
+                    隱藏頭像
                 </label>
 
             </fieldset>
-            <h3>Battle.net settings</h3><br>
+            <h3>Battle.net 設定</h3><br>
             <fieldset class="grid">
                 <label>
-                    Username
+                    使用者名稱
                     <input name="username" placeholder="{{ .Config.Username }}" value="{{ .Config.Username }}"/>
                 </label>
                 <label>
-                    Password
+                    密碼
                     <input type="password" name="password" placeholder="{{ .Config.Password }}"
                            value="{{ .Config.Password }}"/>
                 </label>
                 <label>
-                    Realm
+                    伺服器
                     <select name="realm">
                         <option value="eu.actual.battle.net" {{ if eq .Config.Realm
-                        "eu.actual.battle.net" }}selected{{ end }}>Europe
+                        "eu.actual.battle.net" }}selected{{ end }}>歐洲
                         </option>
                         <option value="us.actual.battle.net" {{ if eq .Config.Realm
-                        "us.actual.battle.net" }}selected{{ end }}>America
+                        "us.actual.battle.net" }}selected{{ end }}>美洲
                         </option>
                         <option value="kr.actual.battle.net" {{ if eq .Config.Realm
-                        "kr.actual.battle.net" }}selected{{ end }}>Korea
+                        "kr.actual.battle.net" }}selected{{ end }}>韓國
                         </option>
                     </select>
                 </label>
                 <label>
-                    Authentication Method
+                    驗證方式
                     <select name="authmethod">
                         <option value="TokenAuth" {{ if eq .Config.AuthMethod
-                        "TokenAuth" }}selected{{ end }}>Auth Token
+                        "TokenAuth" }}selected{{ end }}>驗證令牌
                         </option>
                         <option value="UsernamePassword" {{ if eq .Config.AuthMethod
-                        "UsernamePassword" }}selected{{ end }}>Username & Password
+                        "UsernamePassword" }}selected{{ end }}>使用者名稱和密碼
                         </option>
                         <option value="None" {{ if eq .Config.AuthMethod
-                        "None" }}selected{{ end }}>None
+                        "None" }}selected{{ end }}>無
                         </option>
                     </select>
                 </label>
             </fieldset>
             <fieldset class="grid">
                 <label>
-                    Authentication Token
+                    驗證令牌
                     <input type="password" name="AuthToken" placeholder="{{ .Config.AuthToken }}" value="{{ .Config.AuthToken }}"/>
                 </label>
             </fieldset>
 
-            <h3>Scheduler</h3><br>
-            <label>Set the time ranges when the bot should Start and Stop automatically. Multiple time ranges can be set for the same day if you want to simulate breaks. This will enforce killing of the game client on Stop.</label><br>
+            <h3>排程器</h3><br>
+            <label>設定機器人自動啟動和停止的時間範圍。同一天可以設定多個時間範圍來模擬休息。停止時將強制關閉遊戲客戶端。</label><br>
             <fieldset class="grid">
                 <label>
-                    Enabled
+                    啟用
                     <input type="checkbox" name="schedulerEnabled" {{ if .Config.Scheduler.Enabled }}checked{{ end }}/>
                 </label>
             </fieldset>
@@ -263,90 +263,90 @@
                             {{ range $timeRange := $day.TimeRanges }}
                                 <div class="time-range">
                                     <input type="time" name="scheduler[{{ $dayIndex }}][start][]" value="{{ $timeRange.Start.Format "15:04" }}" required>
-                                    <span>to</span>
+                                    <span>至</span>
                                     <input type="time" name="scheduler[{{ $dayIndex }}][end][]" value="{{ $timeRange.End.Format "15:04" }}" required>
                                     <button type="button" class="remove-time-range"><i class="bi bi-trash"></i></button>
                                 </div>
                             {{ end }}
                         </div>
                         <button type="button" class="add-time-range" data-day="{{ $dayIndex }}">
-                            <i class="bi bi-plus-circle"></i> Add Time Range
+                            <i class="bi bi-plus-circle"></i> 新增時間範圍
                         </button>
                     </div>
                 {{ end }}
             </div>
 
-            <br><h3>Health settings</h3><br>
+            <br><h3>生命設定</h3><br>
             <fieldset class="grid">
                 <label>
-                    Healing at (%)
+                    補血藥水使用時機 (%)
                     <input type="number" name="healingPotionAt" min="0" max="99" placeholder="{{ .Config.Health.HealingPotionAt }}"
                            value="{{ .Config.Health.HealingPotionAt }}"/>
                 </label>
                 <label>
-                    Mana at (%)
+                    法力藥水使用時機 (%)
                     <input type="number" name="manaPotionAt" min="0" max="99" placeholder="{{ .Config.Health.ManaPotionAt }}"
                            value="{{ .Config.Health.ManaPotionAt }}"/>
                 </label>
                 <label>
-                    Rejuv at (% of life)
+                    回復藥水使用時機（生命 %）
                     <input type="number" name="rejuvPotionAtLife" min="0" max="99" placeholder="{{ .Config.Health.RejuvPotionAtLife }}"
                            value="{{ .Config.Health.RejuvPotionAtLife }}"/>
                 </label>
                 <label>
-                    Rejuv at (% of mana)
+                    回復藥水使用時機（法力 %）
                     <input type="number" name="rejuvPotionAtMana" min="0" max="99" placeholder="{{ .Config.Health.RejuvPotionAtMana }}"
                            value="{{ .Config.Health.RejuvPotionAtMana }}"/>
                 </label>
                 <label>
-                    Chicken at (%)
+                    緊急離開時機 (%)
                     <input type="number" name="chickenAt" min="0" max="99" placeholder="{{ .Config.Health.ChickenAt }}"
                            value="{{ .Config.Health.ChickenAt }}"/>
                 </label>
             </fieldset>
-            <h4>Belt Layout</h4><br>
+            <h4>腰帶配置</h4><br>
             <fieldset class="grid">
                 {{ range $index, $potionType := .Config.Inventory.BeltColumns }}
                     <label>
-                        Column {{ $index }}
+                        欄位 {{ $index }}
                         <select name="inventoryBeltColumns[]">
                             <option value="healing" {{ if eq $potionType
-                            "healing" }}selected{{ end }}>Healing
+                            "healing" }}selected{{ end }}>治療
                             </option>
                             <option value="mana" {{ if eq $potionType
-                            "mana" }}selected{{ end }}>Mana
+                            "mana" }}selected{{ end }}>法力
                             </option>
                             <option value="rejuvenation" {{ if eq $potionType
-                            "rejuvenation" }}selected{{ end }}>Rejuvenation
+                            "rejuvenation" }}selected{{ end }}>回復
                             </option>
                         </select>
                     </label>
                 {{ end }}
             </fieldset>
-            <h3>Merc Settings</h3><br>
+            <h3>傭兵設定</h3><br>
             <label>
                 <input id="use_merc" type="checkbox" name="useMerc" {{ if .Config.Character.UseMerc }}checked{{ end }}/>
-                Use merc
+                使用傭兵
             </label>
             <fieldset id="merc_health_settings" class="grid">
                 <label>
-                    Merc healing at (%)
+                    傭兵補血時機 (%)
                     <input type="number" min="0" max="99" name="mercHealingPotionAt"
                            placeholder="{{ .Config.Health.MercHealingPotionAt }}"
                            value="{{ .Config.Health.MercHealingPotionAt }}"/>
                 </label>
                 <label>
-                    Merc reju at (%)
+                    傭兵回復藥水時機 (%)
                     <input type="number" min="0" max="99" name="mercRejuvPotionAt" placeholder="{{ .Config.Health.MercRejuvPotionAt }}"
                            value="{{ .Config.Health.MercRejuvPotionAt }}"/>
                 </label>
                 <label>
-                    Merc chicken at (%)
+                    傭兵緊急離開時機 (%)
                     <input type="number" min="0" max="99" name="mercChickenAt" placeholder="{{ .Config.Health.MercChickenAt }}"
                            value="{{ .Config.Health.MercChickenAt }}"/>
                 </label>
             </fieldset>
-            <h3>Inventory (Checked means locked)</h3>
+            <h3>背包（勾選表示鎖定）</h3>
             <table>
                 {{ range $rowIndex, $row := .Config.Inventory.InventoryLock }}
                     <tr>
@@ -359,57 +359,57 @@
                     </tr>
                 {{ end }}
             </table>
-            <h3>Game Settings</h3><br>
+            <h3>遊戲設定</h3><br>
             <label>
                 <input type="checkbox" name="createLobbyGames" {{ if .Config.Game.CreateLobbyGames }}checked{{ end }}/>
-                Create Lobby Games
+                建立大廳遊戲
             </label><br>
             <fieldset class="grid">
                 <label>
-                    Game name pattern
+                    遊戲名稱格式
                     <input name="companionGameNameTemplate" placeholder="{{ .Config.Companion.GameNameTemplate }}"
                            value="{{ .Config.Companion.GameNameTemplate }}"/>
                 </label>
                 <label>
-                    Game password (leave blank for public games)
+                    遊戲密碼（留空表示公開遊戲）
                     <input name="companionGamePassword" placeholder="{{ .Config.Companion.GamePassword }}"
                            value="{{ .Config.Companion.GamePassword }}"/>
                 </label>
             </fieldset>
             <fieldset class="grid">
                 <label>
-                    Game Difficulty
+                    遊戲難度
                     <select name="gameDifficulty" id="gameDifficulty">
-                        <option value="normal" {{ if eq .Config.Game.Difficulty "normal" }}selected{{ end }}>Normal</option>
-                        <option value="nightmare" {{ if eq .Config.Game.Difficulty "nightmare" }}selected{{ end }}>Nightmare</option>
-                        <option value="hell" {{ if eq .Config.Game.Difficulty "hell" }}selected{{ end }}>Hell</option>
+                        <option value="normal" {{ if eq .Config.Game.Difficulty "normal" }}selected{{ end }}>普通</option>
+                        <option value="nightmare" {{ if eq .Config.Game.Difficulty "nightmare" }}selected{{ end }}>噩夢</option>
+                        <option value="hell" {{ if eq .Config.Game.Difficulty "hell" }}selected{{ end }}>地獄</option>
                     </select>
                 </label>
                 <label>
-                    Max game length (seconds)
+                    最大遊戲時長（秒）
                     <input name="maxGameLength" min="50" type="number" placeholder="{{ .Config.MaxGameLength }}"
                            value="{{ .Config.MaxGameLength }}"/>
                 </label>
             </fieldset>
-            <h4>Run Settings</h4><br>
+            <h4>路線設定</h4><br>
             <label>
-                Choose the runs that you want the bot to run. You can either drag & drop runs below to enable or disable them, or use the + - buttons. Click on any of the runs to expand them and see more details and options.
+                選擇你希望機器人執行的路線。你可以拖放路線來啟用或停用，或使用 + - 按鈕。點擊任何路線可展開查看更多詳情和選項。
             </label><br>
             <label>
                 <input type="checkbox" name="gameRandomizeRuns" {{ if .Config.Game.RandomizeRuns }}checked{{ end }}/>
-                Randomize run order
+                隨機路線順序
             </label><br>
             <input type="hidden" id="gameRuns" name="gameRuns" value="">
             <div class="grid">
                 <div>
-                    <h6>Enabled Runs:</h6>
+                    <h6>已啟用路線：</h6>
                     <ul style="padding-top: 52px" class="run-list" id="enabled_runs">
                         {{ range $index, $run := .EnabledRuns }}
                             <li value="{{ $run }}">
                                 <details>
                                     <summary role="button" class="outline secondary">
                                         <span>{{ $run }}</span>
-                                        <button type="button" class="remove-run" title="Remove run"><i class="bi bi-dash"></i></button>
+                                        <button type="button" class="remove-run" title="移除路線"><i class="bi bi-dash"></i></button>
                                     </summary>
                                     {{ executeTemplateByName $run $topLevelContext }}
                                 </details>
@@ -418,15 +418,15 @@
                     </ul>
                 </div>
                 <div>
-                    <h6>Disabled Runs:</h6>
-                    <input type="text" id="search-disabled-runs" placeholder="Search runs...">
+                    <h6>已停用路線：</h6>
+                    <input type="text" id="search-disabled-runs" placeholder="搜尋路線...">
                     <ul class="run-list" id="disabled_runs">
                         {{ range $index, $run := .DisabledRuns }}
                             <li value="{{ $run }}">
                                 <details>
                                     <summary role="button" class="outline secondary">
                                         <span>{{ $run }}</span>
-                                        <button type="button" class="add-run" title="Add run"><i class="bi bi-plus"></i></button>
+                                        <button type="button" class="add-run" title="新增路線"><i class="bi bi-plus"></i></button>
                                     </summary>
                                     {{ executeTemplateByName $run $topLevelContext }}
                                 </details>
@@ -435,23 +435,23 @@
                     </ul>
                 </div>
             </div>
-            <h3>Gambling</h3>
+            <h3>賭博</h3>
             <label>
                 <input type="checkbox" name="gamblingEnabled" {{ if .Config.Gambling.Enabled }}checked{{ end }}/>
-                Enabled
+                啟用
             </label>
-            <h3>Cube Recipes</h3>
+            <h3>赫拉迪克方塊合成</h3>
             <label>
                 <input type="checkbox" style="padding-right: 30px" name="enableCubeRecipes" {{ if .Config.CubeRecipes.Enabled }}checked{{ end }}/>
-                Enable the bot to automatically cube item recipes.
+                啟用機器人自動使用赫拉迪克方塊合成物品。
             </label><br>
             <label>
                 <input type="checkbox" name="skipPerfectAmethysts" {{ if .Config.CubeRecipes.SkipPerfectAmethysts }}checked{{ end }}/>
-                Don't use Perfect Amethysts when rolling charms
+                合成護身符時不使用完美紫寶石
             </label><br>
             <label>
                 <input type="checkbox" name="skipPerfectRubies" {{ if .Config.CubeRecipes.SkipPerfectRubies }}checked{{ end }}/>
-                Don't use Perfect Rubies when rolling charms
+                合成護身符時不使用完美紅寶石
             </label><br>
 
             <div class="recipe-grid">
@@ -462,38 +462,38 @@
                     </label>
                 {{ end }}
             </div>
-            <h3>Leader mode</h3>
+            <h3>隊長模式</h3>
             <label>
                 <input type="checkbox" name="companionLeader" {{ if .Config.Companion.Leader }}checked{{ end }}/>
-                Leader
+                隊長
             </label>
             <label>
-                Leader Name
+                隊長名稱
                 <input name="companionLeaderName" placeholder="{{ .Config.Companion.LeaderName }}"
                        value="{{ .Config.Companion.LeaderName }}"/>
             </label>
-            <h3>Back to Town Settings:</h3>
+            <h3>回城設定：</h3>
             <fieldset class="grid">
                 <label>
                     <input id="no_hp_potions" type="checkbox" name="noHpPotions" {{ if .Config.BackToTown.NoHpPotions }}checked{{ end }}/>
-                    No HP potions
+                    無生命藥水
                 </label>
                 <label>
                     <input id="no_mp_potions" type="checkbox" name="noMpPotions" {{ if .Config.BackToTown.NoMpPotions }}checked{{ end }}/>
-                    No MP potions
+                    無法力藥水
                 </label>
                 <label>
                     <input id="merc_died" type="checkbox" name="mercDied" {{ if .Config.BackToTown.MercDied }}checked{{ end }}/>
-                    Mercenary is dead
+                    傭兵死亡
                 </label>
                 <label>
                     <input id="equip_broken" type="checkbox" name="equipmentBroken" {{ if .Config.BackToTown.EquipmentBroken }}checked{{ end }}/>
-                    Equipment Broken
+                    裝備損壞
                 </label>
             </fieldset>
             <fieldset class="grid">
-                <a href="/"><input type="button" value="Cancel" class="secondary"/></a>
-                <input type="submit" value="Save"/>
+                <a href="/"><input type="button" value="取消" class="secondary"/></a>
+                <input type="submit" value="儲存"/>
             </fieldset>
         </form>
     </div>

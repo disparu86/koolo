@@ -537,7 +537,11 @@ func (s *HttpServer) startSupervisor(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	s.manager.Start(Supervisor, false)
+	go func() {
+		if err := s.manager.Start(Supervisor, false); err != nil {
+			s.logger.Error(fmt.Sprintf("error starting supervisor %s: %s", Supervisor, err.Error()))
+		}
+	}()
 	s.initialData(w, r)
 }
 
@@ -1020,7 +1024,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	dayNames := []string{"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"}
+	dayNames := []string{"星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"}
 
 	s.templates.ExecuteTemplate(w, "character_settings.gohtml", CharacterSettings{
 		Supervisor:   supervisor,

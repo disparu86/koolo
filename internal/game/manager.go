@@ -310,7 +310,12 @@ func StartGame(username string, password string, authmethod string, authToken st
 		}
 		return 1
 	})
+	deadline := time.Now().Add(60 * time.Second)
 	for {
+		if time.Now().After(deadline) {
+			cmd.Process.Kill()
+			return 0, 0, fmt.Errorf("timeout waiting for D2R window to appear")
+		}
 		windows.EnumWindows(cb, unsafe.Pointer(&cmd.Process.Pid))
 		if foundHwnd != 0 {
 			// Small delay and read again, to be sure we are capturing the right hwnd
@@ -318,6 +323,7 @@ func StartGame(username string, password string, authmethod string, authToken st
 			windows.EnumWindows(cb, unsafe.Pointer(&cmd.Process.Pid))
 			break
 		}
+		time.Sleep(500 * time.Millisecond)
 	}
 
 	// Close the handle for the new process, it will allow the user to open another instance of the game

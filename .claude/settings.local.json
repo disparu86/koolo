@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(done)",
+      "Bash(ls internal/run/*.go)",
+      "Bash(ls internal/game/*.go)",
+      "Bash(xargs ls -la)",
+      "Bash(grep -l \"type.*struct\" internal/config/*.go)",
+      "Bash(go version)",
+      "Bash(./build.bat)",
+      "Bash(go clean -cache)",
+      "Bash(xargs grep -l \"SupervisorStatus\\\\|Running\\\\|Starting\")",
+      "Bash(go build ./...)",
+      "Bash(go build -trimpath -tags static -ldflags=\"-s -w -H windowsgui\" -o koolo_new.exe ./cmd/koolo)",
+      "Bash(tasklist)",
+      "Bash(go build -o build/koolo_new.exe ./cmd/koolo)"
+    ]
+  }
+}

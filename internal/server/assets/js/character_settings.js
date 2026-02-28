@@ -73,7 +73,7 @@ function checkLevelingProfile() {
     const characterClass = document.getElementById('characterClass').value;
 
     if (levelingProfiles.includes(characterClass)) {
-        const confirmation = confirm("This profile requires the leveling run profile, would you like to clear enabled run profiles and select the leveling profile?");
+        const confirmation = confirm("此設定檔需要練等路線設定，是否要清除已啟用的路線並選擇練等路線？");
         if (confirmation) {
             clearEnabledRuns();
             selectLevelingProfile();
@@ -99,7 +99,7 @@ function updateButtonForEnabledRun(runElement) {
     const button = runElement.querySelector('button');
     button.classList.remove('add-run');
     button.classList.add('remove-run');
-    button.title = "Remove run";
+    button.title = "移除路線";
     button.innerHTML = '<i class="bi bi-dash"></i>';
 }
 
@@ -107,7 +107,7 @@ function updateButtonForDisabledRun(runElement) {
     const button = runElement.querySelector('button');
     button.classList.remove('remove-run');
     button.classList.add('add-run');
-    button.title = "Add run";
+    button.title = "新增路線";
     button.innerHTML = '<i class="bi bi-plus"></i>';
 }
 
@@ -208,7 +208,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 newTimeRange.className = 'time-range';
                 newTimeRange.innerHTML = `
                     <input type="time" name="scheduler[${day}][start][]" required>
-                    <span>to</span>
+                    <span>至</span>
                     <input type="time" name="scheduler[${day}][end][]" required>
                     <button type="button" class="remove-time-range"><i class="bi bi-trash"></i></button>
                 `;
