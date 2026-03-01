@@ -1,9 +1,11 @@
 package memory
 
 import (
+	"log"
 	"slices"
 	"sort"
 	"strings"
+	"sync/atomic"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/item"
@@ -11,6 +13,8 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data/state"
 	"github.com/hectorgimenez/d2go/pkg/utils"
 )
+
+var inventoryDebugCount atomic.Int64
 
 func (gd *GameReader) Inventory(rawPlayerUnits RawPlayerUnits, hover data.HoverData) data.Inventory {
 	mainPlayer := rawPlayerUnits.GetMainPlayer()
@@ -480,6 +484,15 @@ func (gd *GameReader) Inventory(rawPlayerUnits RawPlayerUnits, hover data.HoverD
 	}
 
 	inventory.Belt = belt
+
+	// Log first 3 inventory reads for debugging
+	if cnt := inventoryDebugCount.Load(); cnt < 3 {
+		inventoryDebugCount.Add(1)
+		initD2goLog()
+		log.Printf("[d2go] Inventory: mainPlayer=%q id=%d totalItems=%d beltItems=%d",
+			mainPlayer.Name, mainPlayer.UnitID, len(inventory.AllItems), len(belt.Items))
+	}
+
 	return inventory
 }
 

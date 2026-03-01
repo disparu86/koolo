@@ -2,6 +2,8 @@ package memory
 
 import (
 	"encoding/binary"
+	"log"
+	"sync/atomic"
 
 	"github.com/hectorgimenez/d2go/pkg/data/mode"
 
@@ -10,6 +12,8 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data/skill"
 	"github.com/hectorgimenez/d2go/pkg/data/state"
 )
+
+var playerDebugCount atomic.Int64
 
 func (gd *GameReader) GetRawPlayerUnits() RawPlayerUnits {
 	rawPlayerUnits := make(RawPlayerUnits, 0)
@@ -36,11 +40,22 @@ func (gd *GameReader) GetRawPlayerUnits() RawPlayerUnits {
 			playerNameAddr := uintptr(gd.Process.ReadUInt(pUnitData, Uint64))
 			name := gd.Process.ReadStringFromMemory(playerNameAddr, 0)
 
-			expCharPtr := uintptr(gd.Process.ReadUInt(gd.moduleBaseAddressPtr+gd.offset.Expansion, Uint64))
-			expChar := gd.Process.ReadUInt(expCharPtr+0x5C, Uint16)
-			isMainPlayer := gd.Process.ReadUInt(inventoryAddr+0x30, Uint16)
-			if expChar > 0 {
+			// Determine if this is an expansion (LoD) character
+			// When Expansion offset is 0 (pattern not found), default to expansion mode
+			// since D2R characters are virtually always Lord of Destruction
+			isExpansion := true
+			if gd.offset.Expansion != 0 {
+				expCharPtr := uintptr(gd.Process.ReadUInt(gd.moduleBaseAddressPtr+gd.offset.Expansion, Uint64))
+				if expCharPtr != 0 {
+					expChar := gd.Process.ReadUInt(expCharPtr+0x5C, Uint16)
+					isExpansion = expChar > 0
+				}
+			}
+			var isMainPlayer uint
+			if isExpansion {
 				isMainPlayer = gd.Process.ReadUInt(inventoryAddr+0x70, Uint16)
+			} else {
+				isMainPlayer = gd.Process.ReadUInt(inventoryAddr+0x30, Uint16)
 			}
 			isCorpse := gd.Process.ReadUInt(playerUnit+0x1AE, Uint8)
 
@@ -50,7 +65,7 @@ func (gd *GameReader) GetRawPlayerUnits() RawPlayerUnits {
 			states := gd.GetStates(statsListExPtr)
 			playerMode := mode.PlayerMode(gd.Process.ReadUInt(playerUnit+0x0c, Uint32))
 
-			rawPlayerUnits = append(rawPlayerUnits, RawPlayerUnit{
+			rpu := RawPlayerUnit{
 				UnitID:       data.UnitID(unitID),
 				Address:      playerUnit,
 				Name:         name,
@@ -66,7 +81,15 @@ func (gd *GameReader) GetRawPlayerUnits() RawPlayerUnits {
 				Stats:     stats,
 				BaseStats: baseStats,
 				Mode:      playerMode,
-			})
+			}
+			// Log first 5 calls to debug player detection
+			if cnt := playerDebugCount.Load(); cnt < 5 {
+				playerDebugCount.Add(1)
+				initD2goLog()
+				log.Printf("[d2go] PlayerUnit: name=%q id=%d isMain=%v area=%d pos=(%d,%d) isExp=%v invAddr=0x%X",
+					name, unitID, isMainPlayer > 0, levelNo, xPos, yPos, isExpansion, inventoryAddr)
+			}
+			rawPlayerUnits = append(rawPlayerUnits, rpu)
 			playerUnit = uintptr(gd.Process.ReadUInt(playerUnit+0x158, Uint64))
 		}
 	}

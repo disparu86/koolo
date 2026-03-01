@@ -81,6 +81,8 @@ func doCalculateOffsets(process Process, attempt int) Offset {
 	gameDataOffset := (pattern - process.moduleBaseAddressPtr) - 0x121 + offsetInt
 
 	// UnitTable
+	// Pattern: 48 03 C7 49 8B 8C C6 = add rax,rdi; mov rcx,[r14+rax*8+OFFSET]
+	// The 4 bytes at pattern+7 give the UnitTable offset (should be > 0x100000)
 	pattern = process.FindPattern(memory, "\x48\x03\xC7\x49\x8B\x8C\xC6", "xxxxxxx")
 	log.Printf("[d2go] [attempt %d] UnitTable pattern (external): 0x%X", attempt, pattern)
 	var unitTableOffset uintptr
@@ -101,6 +103,11 @@ func doCalculateOffsets(process Process, attempt int) Offset {
 		} else {
 			log.Printf("[d2go] [attempt %d] UnitTable NOT found via remote thread either", attempt)
 		}
+	}
+	// Sanity check: UnitTable offset should be large (> 0x100000), reject small values as false positives
+	if unitTableOffset > 0 && unitTableOffset < 0x100000 {
+		log.Printf("[d2go] [attempt %d] UnitTable offset 0x%X rejected (too small, likely false positive)", attempt, unitTableOffset)
+		unitTableOffset = 0
 	}
 
 	// UI

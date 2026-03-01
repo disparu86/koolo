@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
+	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/koolo/internal/game"
 )
 
@@ -42,6 +43,13 @@ func (hm *Manager) HandleHealthAndMana() error {
 	hpConfig := hm.data.CharacterCfg.Health
 	// Safe area, skipping
 	if hm.data.PlayerUnit.Area.IsTown() {
+		return nil
+	}
+
+	// If MaxLife stat is 0 or missing, player stats are unavailable (UnitTable not found).
+	// Skip all health checks to avoid false death/chicken triggers.
+	maxLife, found := hm.data.PlayerUnit.FindStat(stat.MaxLife, 0)
+	if !found || maxLife.Value == 0 {
 		return nil
 	}
 

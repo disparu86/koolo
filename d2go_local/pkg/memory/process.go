@@ -722,6 +722,25 @@ func (p Process) findPattern(memory []byte, pattern, mask string) int {
 	return 0
 }
 
+// FindPatternWithMask searches for a byte pattern with a byte mask (0xFF=match, 0x00=wildcard).
+// Returns the absolute address (moduleBase + offset) or 0 if not found.
+func (p Process) FindPatternWithMask(memory []byte, pattern, mask []byte) uintptr {
+	patLen := len(pattern)
+	for i := 0; i < int(p.moduleBaseSize)-patLen; i++ {
+		found := true
+		for j := 0; j < patLen; j++ {
+			if mask[j] != 0 && memory[i+j] != pattern[j] {
+				found = false
+				break
+			}
+		}
+		if found {
+			return p.moduleBaseAddressPtr + uintptr(i)
+		}
+	}
+	return 0
+}
+
 func (p Process) FindPattern(memory []byte, pattern, mask string) uintptr {
 	if offset := p.findPattern(memory, pattern, mask); offset != 0 {
 		return p.moduleBaseAddressPtr + uintptr(offset)
