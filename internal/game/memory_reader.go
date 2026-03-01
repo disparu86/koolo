@@ -100,8 +100,16 @@ func (gd *MemoryReader) MapSeed() uint {
 }
 
 func (gd *MemoryReader) FetchMapData() error {
-	d := gd.GameReader.GetData()
-	gd.mapSeed, _ = gd.getMapSeed(d.PlayerUnit.Address)
+	// Try direct map seed reading first (D2RMH method — no UnitTable needed)
+	if seed, ok := gd.GameReader.GetMapSeedDirect(); ok {
+		gd.mapSeed = seed
+		gd.logger.Debug("Map seed read via direct method", slog.Uint64("seed", uint64(seed)))
+	} else {
+		// Fallback to original UnitTable-based method
+		d := gd.GameReader.GetData()
+		gd.mapSeed, _ = gd.getMapSeed(d.PlayerUnit.Address)
+		gd.logger.Debug("Map seed read via UnitTable method", slog.Uint64("seed", uint64(gd.mapSeed)))
+	}
 	t := time.Now()
 	gd.logger.Debug("Fetching map data...", slog.Uint64("seed", uint64(gd.mapSeed)), slog.String("difficulty", string(config.Characters[gd.supervisorName].Game.Difficulty)))
 

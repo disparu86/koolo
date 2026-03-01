@@ -129,18 +129,13 @@ func (gd *GameReader) GetData() data.Data {
 }
 
 func (gd *GameReader) InGame() bool {
-	// Method 1: Check via hardcoded offset (works even without UnitTable)
-	if gd.IsIngame() {
-		return true
-	}
-
-	// Method 2: Check via panel detection — if HUDPanel exists and
-	// LoadScreenPanel does NOT, we're in-game
+	// Method 1: Panel-based check — HUDPanel exists and LoadScreenPanel is NOT visible.
+	// This is the most reliable method as panels accurately reflect the visual game state.
 	if gd.isInGameByPanels() {
 		return true
 	}
 
-	// Method 3: Full player unit check (only works when UnitTable is found)
+	// Method 2: Full player unit check (only works when UnitTable is found)
 	if gd.offset.UnitTable != 0 {
 		rawUnits := gd.GetRawPlayerUnits()
 		player := rawUnits.GetMainPlayer()
@@ -148,6 +143,9 @@ func (gd *GameReader) InGame() bool {
 			return true
 		}
 	}
+
+	// Note: We intentionally do NOT use IsIngame() hardcoded offset here because
+	// it can remain true during exit transitions, causing ExitGame() to time out.
 
 	return false
 }
@@ -451,4 +449,33 @@ func (gd *GameReader) GetActiveWeaponSlot() int {
 		return 0 // Default to primary weapons on error
 	}
 	return state
+}
+
+// GetMapSeedDirect reads the map seed using the D2RMH method (direct pointer chain).
+// This does NOT require UnitTable — it uses a separate pattern-scanned address.
+// Returns (seed, true) on success, (0, false) on failure.
+func (gd *GameReader) GetMapSeedDirect() (uint, bool) {
+	if gd.offset.MapSeedAddr == 0 {
+		return 0, false
+	}
+
+	// Step 1: Read pointer from mapSeedAddr
+	mapSeedPtr := uintptr(gd.Process.ReadUInt(gd.offset.MapSeedAddr, Uint64))
+	if mapSeedPtr == 0 {
+		return 0, false
+	}
+
+	// Step 2: Read obfuscation check at mapSeedPtr + 0x110
+	seedCheck := gd.Process.ReadUInt(mapSeedPtr+0x110, Uint32)
+
+	// Step 3: Read actual seed based on seedCheck flag
+	var seedOffset uintptr
+	if seedCheck != 0 {
+		seedOffset = 0x840
+	} else {
+		seedOffset = 0x10C0
+	}
+	seed := gd.Process.ReadUInt(mapSeedPtr+seedOffset, Uint32)
+
+	return uint(seed), seed != 0
 }

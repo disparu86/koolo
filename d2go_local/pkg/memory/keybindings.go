@@ -2,14 +2,51 @@ package memory
 
 import (
 	"encoding/binary"
+	"log"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/skill"
 )
 
 func (gd *GameReader) GetKeyBindings() data.KeyBindings {
-	blob := gd.ReadBytesFromMemory(gd.moduleBaseAddressPtr+0x1DFFAF4, 0x500)
-	blobSkills := gd.ReadBytesFromMemory(gd.moduleBaseAddressPtr+0x2228030, 0x500)
+	blobAddr := gd.moduleBaseAddressPtr + 0x1DFFAF4
+	blobSkillsAddr := gd.moduleBaseAddressPtr + 0x2228030
+
+	blob := gd.ReadBytesFromMemory(blobAddr, 0x500)
+	blobSkills := gd.ReadBytesFromMemory(blobSkillsAddr, 0x500)
+
+	// Check if ReadProcessMemory returned all zeros (anti-cheat protection)
+	allZero := true
+	for _, b := range blobSkills[:64] {
+		if b != 0 {
+			allZero = false
+			break
+		}
+	}
+
+	if allZero {
+		log.Printf("[d2go] KeyBindings: external read returned all zeros, trying in-process read...")
+		if inBlob, err := gd.Process.readMemoryViaRemoteThread(blobAddr, 0x500); err == nil {
+			blob = inBlob
+			log.Printf("[d2go] KeyBindings: blob in-process read OK, first 32 bytes: %02X", blob[:32])
+		} else {
+			log.Printf("[d2go] KeyBindings: blob in-process read failed: %v", err)
+		}
+		if inSkills, err := gd.Process.readMemoryViaRemoteThread(blobSkillsAddr, 0x500); err == nil {
+			blobSkills = inSkills
+			log.Printf("[d2go] KeyBindings: blobSkills in-process read OK, first 32 bytes: %02X", blobSkills[:32])
+		} else {
+			log.Printf("[d2go] KeyBindings: blobSkills in-process read failed: %v", err)
+		}
+	}
+
+	// Debug: log skill IDs
+	for i := 0; i < 16; i++ {
+		sid := binary.LittleEndian.Uint32(blobSkills[i*0x1c : i*0x1c+4])
+		if sid != 0 && sid != 0xFFFFFFFF {
+			log.Printf("[d2go] KeyBinding slot %d: skillID=%d (%s)", i, sid, skill.SkillNames[skill.ID(sid)])
+		}
+	}
 
 	skillsKB := [16]data.SkillBinding{}
 	for i := 0; i < 7; i++ {

@@ -19,6 +19,7 @@ type Offset struct {
 	WidgetStatesOffset          uintptr
 	WaypointsOffset             uintptr
 	FPS                         uintptr
+	MapSeedAddr                 uintptr // Absolute address for direct map seed reading (from D2RMH pattern)
 }
 
 var d2goLogOnce sync.Once
@@ -191,8 +192,36 @@ func doCalculateOffsets(process Process, attempt int) Offset {
 	fpsOffsetPtr := uintptr(process.ReadUInt(pattern+2, Uint32))
 	fpsOffset := pattern - process.moduleBaseAddressPtr + 6 + fpsOffsetPtr
 
-	log.Printf("[d2go] [attempt %d] Final offsets: GameData=0x%X UnitTable=0x%X UI=0x%X Expansion=0x%X Roster=0x%X PanelMgr=0x%X WidgetStates=0x%X",
-		attempt, gameDataOffset, unitTableOffset, uiOffsetPtr, expOffset, rosterOffset, panelManagerContainerOffset, WidgetStatesOffset)
+	// MapSeed (from D2RMH) — direct pointer to map seed, no UnitTable needed
+	// Pattern: 41 8B F9 48 8D 0D xx xx xx xx
+	// At pattern+6: 4-byte relative offset → mapSeedAddr = baseAddr + off + 0xEA + rel
+	pattern = process.FindPattern(memory, "\x41\x8B\xF9\x48\x8D\x0D", "xxxxxx")
+	log.Printf("[d2go] [attempt %d] MapSeed pattern (external): 0x%X", attempt, pattern)
+	var mapSeedAbsAddr uintptr
+	if pattern != 0 {
+		rel := int32(binary.LittleEndian.Uint32(process.ReadBytesFromMemory(pattern+6, 4)))
+		mapSeedAbsAddr = uintptr(int64(pattern) + 0xEA + int64(rel))
+		log.Printf("[d2go] [attempt %d] MapSeed addr: 0x%X (rel=0x%X)", attempt, mapSeedAbsAddr, rel)
+	} else {
+		// Fallback: try in-process search
+		log.Printf("[d2go] [attempt %d] MapSeed: trying in-process search...", attempt)
+		off, val, ok := process.searchPatternViaRemoteThread(
+			[]byte{0x41, 0x8B, 0xF9, 0x48, 0x8D, 0x0D},
+			[]byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},
+			6, // read 4 bytes at pattern+6
+		)
+		if ok {
+			// off is relative to module base, val is the rel32 operand
+			absOff := int64(process.moduleBaseAddressPtr) + int64(off) + 0xEA + int64(int32(val))
+			mapSeedAbsAddr = uintptr(absOff)
+			log.Printf("[d2go] [attempt %d] MapSeed found via remote thread! addr=0x%X", attempt, mapSeedAbsAddr)
+		} else {
+			log.Printf("[d2go] [attempt %d] MapSeed NOT found", attempt)
+		}
+	}
+
+	log.Printf("[d2go] [attempt %d] Final offsets: GameData=0x%X UnitTable=0x%X UI=0x%X Expansion=0x%X Roster=0x%X PanelMgr=0x%X WidgetStates=0x%X MapSeed=0x%X",
+		attempt, gameDataOffset, unitTableOffset, uiOffsetPtr, expOffset, rosterOffset, panelManagerContainerOffset, WidgetStatesOffset, mapSeedAbsAddr)
 
 	_ = bytes // suppress unused warning
 
@@ -207,5 +236,6 @@ func doCalculateOffsets(process Process, attempt int) Offset {
 		WidgetStatesOffset:          WidgetStatesOffset,
 		WaypointsOffset:             WaypointsOffset,
 		FPS:                         fpsOffset,
+		MapSeedAddr:                 mapSeedAbsAddr,
 	}
 }

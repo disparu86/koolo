@@ -45,7 +45,10 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 	b.ctx.Cleanup()
 
 	// Switch to legacy mode if configured
+	// Temporarily attach the current goroutine so context.Get() works for SwitchToLegacyMode
+	b.ctx.AttachRoutine(botCtx.PriorityNormal)
 	action.SwitchToLegacyMode()
+	b.ctx.Detach()
 	b.ctx.RefreshGameData()
 
 	// This routine is in charge of refreshing the game data and handling cancellation, will work in parallel with any other execution

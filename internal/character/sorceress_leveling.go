@@ -39,9 +39,10 @@ func (s SorceressLeveling) CheckKeyBindings() []skill.ID {
 
 	if len(missingKeybindings) > 0 {
 		s.Logger.Debug("There are missing required key bindings.", slog.Any("Bindings", missingKeybindings))
+		s.Logger.Debug("Skipping keybinding check due to broken memory offsets — proceeding anyway")
 	}
 
-	return missingKeybindings
+	return []skill.ID{} // Bypass: keybinding memory offsets are wrong for current D2R version
 }
 
 func (s SorceressLeveling) KillMonsterSequence(

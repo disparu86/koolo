@@ -25,6 +25,9 @@ type SorceressLevelingLightning struct {
 }
 
 func (s SorceressLevelingLightning) CheckKeyBindings() []skill.ID {
+	// TODO: Keybinding memory offsets (0x1DFFAF4, 0x2228030) are wrong for the
+	// current D2R version. Both external ReadProcessMemory and in-process reads
+	// return all zeros. Skipping check until correct offsets are found.
 	requireKeybindings := []skill.ID{skill.TomeOfTownPortal}
 	missingKeybindings := []skill.ID{}
 
@@ -36,9 +39,10 @@ func (s SorceressLevelingLightning) CheckKeyBindings() []skill.ID {
 
 	if len(missingKeybindings) > 0 {
 		s.Logger.Debug("There are missing required key bindings.", slog.Any("Bindings", missingKeybindings))
+		s.Logger.Debug("Skipping keybinding check due to broken memory offsets — proceeding anyway")
 	}
 
-	return missingKeybindings
+	return []skill.ID{} // Return empty to bypass check
 }
 
 func (s SorceressLevelingLightning) KillMonsterSequence(

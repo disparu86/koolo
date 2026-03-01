@@ -522,6 +522,117 @@ func buildMaskFromString(maskStr string) []byte {
 	return mask
 }
 
+// readMemoryViaRemoteThread reads memory from inside the target process using
+// CreateRemoteThread. This bypasses ReadProcessMemory protections (anti-cheat)
+// by executing a simple memcpy shellcode inside the game process.
+// srcAddr is the absolute address to read from. size is the number of bytes to read (max 4096).
+func (p Process) readMemoryViaRemoteThread(srcAddr uintptr, size int) ([]byte, error) {
+	if size <= 0 || size > 4096 {
+		return nil, fmt.Errorf("invalid size %d (must be 1-4096)", size)
+	}
+
+	// x64 shellcode: copies 'size' bytes from srcAddr to outputBuf.
+	// RCX = pointer to params struct.
+	// Params layout:
+	//   [0]  srcAddr    uint64
+	//   [8]  size       uint64
+	//   [16] outputBuf  [size]byte (output)
+	shellcode := []byte{
+		// Prologue
+		0x56,                         // push rsi
+		0x57,                         // push rdi
+		0x48, 0x83, 0xEC, 0x28,       // sub rsp, 0x28
+
+		// Load params
+		0x48, 0x8B, 0x31,             // mov rsi, [rcx]       ; srcAddr
+		0x48, 0x8B, 0x49, 0x08,       // mov rcx_val, [rcx+8] ; size -> we'll use it
+		0x48, 0x8D, 0x79, 0x10,       // lea rdi, [rcx+16]    ; outputBuf
+
+		// Save size in rcx for rep movsb
+		// rcx already has [rcx+8] but we need the params ptr first
+		// Let me redo this more carefully:
+	}
+
+	// Actually, let me write cleaner shellcode
+	shellcode = []byte{
+		// Prologue
+		0x53,                         // push rbx
+		0x56,                         // push rsi
+		0x57,                         // push rdi
+		0x48, 0x83, 0xEC, 0x20,       // sub rsp, 0x20
+
+		// RCX = params ptr
+		0x48, 0x8B, 0xD9,             // mov rbx, rcx         ; save params ptr
+		0x48, 0x8B, 0x73, 0x00,       // mov rsi, [rbx]       ; srcAddr
+		0x48, 0x8B, 0x4B, 0x08,       // mov rcx, [rbx+8]     ; size (count for rep movsb)
+		0x48, 0x8D, 0x7B, 0x10,       // lea rdi, [rbx+16]    ; outputBuf
+
+		// rep movsb: copies rcx bytes from [rsi] to [rdi]
+		0xF3, 0xA4,                   // rep movsb
+
+		// Epilogue
+		0x48, 0x83, 0xC4, 0x20,       // add rsp, 0x20
+		0x5F,                         // pop rdi
+		0x5E,                         // pop rsi
+		0x5B,                         // pop rbx
+		0x31, 0xC0,                   // xor eax, eax
+		0xC3,                         // ret
+	}
+
+	// Layout: [shellcode @ 0x00] [params @ 0x40]
+	const scOffset = uintptr(0)
+	const paramOffset = uintptr(0x40)
+	paramsSize := uintptr(16 + size) // srcAddr(8) + size(8) + outputBuf(size)
+	allocSize := paramOffset + paramsSize
+
+	remoteAddr, _, allocErr := procVirtualAllocEx.Call(
+		uintptr(p.handler), 0, allocSize, 0x3000, 0x40,
+	)
+	if remoteAddr == 0 {
+		return nil, fmt.Errorf("VirtualAllocEx failed: %v", allocErr)
+	}
+	defer procVirtualFreeEx.Call(uintptr(p.handler), remoteAddr, 0, 0x8000)
+
+	// Write shellcode
+	if err := windows.WriteProcessMemory(p.handler, remoteAddr+scOffset, &shellcode[0], uintptr(len(shellcode)), nil); err != nil {
+		return nil, fmt.Errorf("WriteProcessMemory (shellcode): %v", err)
+	}
+
+	// Build and write params (just srcAddr and size, output area is zeroed by VirtualAlloc)
+	params := make([]byte, 16)
+	binary.LittleEndian.PutUint64(params[0:8], uint64(srcAddr))
+	binary.LittleEndian.PutUint64(params[8:16], uint64(size))
+
+	if err := windows.WriteProcessMemory(p.handler, remoteAddr+paramOffset, &params[0], 16, nil); err != nil {
+		return nil, fmt.Errorf("WriteProcessMemory (params): %v", err)
+	}
+
+	// Execute via remote thread
+	threadHandle, _, threadErr := procCreateRemoteThread.Call(
+		uintptr(p.handler), 0, 0,
+		remoteAddr+scOffset,
+		remoteAddr+paramOffset,
+		0, 0,
+	)
+	if threadHandle == 0 {
+		return nil, fmt.Errorf("CreateRemoteThread failed: %v", threadErr)
+	}
+	defer windows.CloseHandle(windows.Handle(threadHandle))
+
+	event, waitErr := windows.WaitForSingleObject(windows.Handle(threadHandle), 5000)
+	if event != 0 || waitErr != nil {
+		return nil, fmt.Errorf("thread wait failed: event=%d err=%v", event, waitErr)
+	}
+
+	// Read back the output buffer
+	result := make([]byte, size)
+	if err := windows.ReadProcessMemory(p.handler, remoteAddr+paramOffset+16, &result[0], uintptr(size), nil); err != nil {
+		return nil, fmt.Errorf("ReadProcessMemory (result): %v", err)
+	}
+
+	return result, nil
+}
+
 func (p Process) ReadBytesFromMemory(address uintptr, size uint) []byte {
 	var data = make([]byte, size)
 	windows.ReadProcessMemory(p.handler, address, &data[0], uintptr(size), nil)
