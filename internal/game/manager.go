@@ -90,7 +90,7 @@ func (gm *Manager) NewGame() error {
 	utils.Sleep(250)
 	gm.hid.Click(LeftButton, createX, createY)
 
-	for range 12 {
+	for range 30 {
 		if gm.gr.InGame() {
 			return nil
 		}

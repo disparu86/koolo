@@ -38,7 +38,9 @@ func NewGameReader(process Process) *GameReader {
 
 func (gd *GameReader) GetData() data.Data {
 	if gd.offset.UnitTable == 0 {
-		gd.offset = calculateOffsets(gd.Process)
+		// Quick single-attempt re-scan (no retries) — UnitTable code may now
+		// be decrypted if the game just loaded. Called frequently, so must be fast.
+		gd.offset = calculateOffsetsWithRetries(gd.Process, 1)
 	}
 
 	// Always refresh core player data
@@ -127,9 +129,27 @@ func (gd *GameReader) GetData() data.Data {
 }
 
 func (gd *GameReader) InGame() bool {
-	player := gd.GetRawPlayerUnits().GetMainPlayer()
+	// Method 1: Check via hardcoded offset (works even without UnitTable)
+	if gd.IsIngame() {
+		return true
+	}
 
-	return player.UnitID > 0 && player.Position.X > 0 && player.Position.Y > 0 && player.Area > 0
+	// Method 2: Check via panel detection — if HUDPanel exists and
+	// LoadScreenPanel does NOT, we're in-game
+	if gd.isInGameByPanels() {
+		return true
+	}
+
+	// Method 3: Full player unit check (only works when UnitTable is found)
+	if gd.offset.UnitTable != 0 {
+		rawUnits := gd.GetRawPlayerUnits()
+		player := rawUnits.GetMainPlayer()
+		if player.UnitID > 0 && player.Position.X > 0 && player.Position.Y > 0 && player.Area > 0 {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (gd *GameReader) openMenus() data.OpenMenus {
@@ -303,6 +323,22 @@ func (gd *GameReader) IsOnline() bool {
 
 func (gd *GameReader) IsIngame() bool {
 	return gd.ReadUInt(gd.moduleBaseAddressPtr+0x22E51D0, 1) == 1
+}
+
+// isInGameByPanels checks if in-game panels (HUDPanel) are visible
+// and the loading screen is not showing. This works as a fallback
+// when neither UnitTable nor hardcoded offsets are available.
+func (gd *GameReader) isInGameByPanels() bool {
+	hudPanel := gd.GetPanel("HUDPanel")
+	if hudPanel.PanelName == "" {
+		return false
+	}
+	// HUDPanel exists — check that LoadScreenPanel is NOT visible
+	loadPanel := gd.GetPanel("LoadScreenPanel")
+	if loadPanel.PanelName != "" && loadPanel.PanelVisible {
+		return false // still loading
+	}
+	return true
 }
 
 func (gd *GameReader) IsInLobby() bool {

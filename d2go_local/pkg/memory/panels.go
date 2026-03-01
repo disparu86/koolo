@@ -1,6 +1,8 @@
 package memory
 
 import (
+	"log"
+
 	"github.com/hectorgimenez/d2go/pkg/data"
 )
 
@@ -62,10 +64,21 @@ func (gd *GameReader) ReadAllPanels() map[string]data.Panel {
 	panelPtr := uintptr(gd.Process.ReadUInt(panelStructPtr+0x58, Uint64))
 	numChildren := int(gd.Process.ReadUInt(panelStructPtr+0x60, Uint8))
 
+	log.Printf("[d2go] ReadAllPanels: base=0x%X panelStructPtr=0x%X panelPtr=0x%X numChildren=%d",
+		base, panelStructPtr, panelPtr, numChildren)
+
 	panels := make(map[string]data.Panel)
 	depth := 0
 	// recursively read all panels, starting with the Root panel
 	readPanel(panelPtr, numChildren, &panels, "Root", depth, gd)
+
+	// Log panel names found
+	names := make([]string, 0, len(panels))
+	for name := range panels {
+		names = append(names, name)
+	}
+	log.Printf("[d2go] ReadAllPanels found %d panels: %v", len(panels), names)
+
 	return panels
 }
 

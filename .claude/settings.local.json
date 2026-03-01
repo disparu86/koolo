@@ -18,7 +18,16 @@
       "Bash(xargs grep -n \"go buildSupervisor\\\\|go.*buildSupervisor\")",
       "Bash(xargs grep -l \"type Data struct\")",
       "Bash(xargs grep -l \"buildSupervisor\\\\|buildContext\\\\|Injector\")",
-      "Bash(go list -m -versions github.com/hectorgimenez/d2go)"
+      "Bash(go list -m -versions github.com/hectorgimenez/d2go)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(python3 -c \":*)",
+      "Bash(powershell.exe -File:*)",
+      "Bash(go run tools/pattern_search.go)",
+      "WebFetch(domain:github.com)",
+      "Bash(go get github.com/hectorgimenez/d2go@latest)",
+      "Bash(go run tools/check_exe.go)",
+      "Bash(go build -trimpath -tags static -ldflags=\"-s -w -H windowsgui\" -o build/koolo.exe ./cmd/koolo)",
+      "Bash(go build -trimpath -tags static -ldflags=\"-s -w -H windowsgui\" -o build/koolo2.exe ./cmd/koolo)"
     ]
   }
 }

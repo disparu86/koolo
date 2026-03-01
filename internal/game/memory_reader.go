@@ -74,6 +74,9 @@ func NewGameReader(cfg *config.CharacterCfg, supervisorName string, pid uint32, 
 		slog.Uint64("size", uint64(d2rModule.ModuleBaseSize)),
 	)
 
+	// Set D2R exe path so d2go can read PE from disk when memory is protected
+	memory.D2RExePath = config.Koolo.D2RPath + "\\D2R.exe"
+
 	process, err := memory.NewProcessForPID(pid)
 	if err != nil {
 		return nil, err

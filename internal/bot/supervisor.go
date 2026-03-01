@@ -119,7 +119,11 @@ func (s *baseSupervisor) logGameStart(runs []run.Run) {
 func (s *baseSupervisor) waitUntilCharacterSelectionScreen() error {
 	s.bot.ctx.Logger.Info("Waiting for character selection screen...")
 
+	deadline := time.Now().Add(120 * time.Second)
 	for !s.bot.ctx.GameReader.IsInCharacterSelectionScreen() {
+		if time.Now().After(deadline) {
+			return fmt.Errorf("timeout waiting for character selection screen")
+		}
 		// Spam left click to skip to the char select screen
 		s.bot.ctx.HID.Click(game.LeftButton, 100, 100)
 		time.Sleep(250 * time.Millisecond)
@@ -127,26 +131,56 @@ func (s *baseSupervisor) waitUntilCharacterSelectionScreen() error {
 
 	s.bot.ctx.Logger.Info("Character selection screen found")
 
-	if s.bot.ctx.CharacterCfg.CharacterName != "" {
-		s.bot.ctx.Logger.Info("Selecting character...")
-		previousSelection := ""
-		for {
-			characterName := s.bot.ctx.GameReader.GameReader.GetSelectedCharacterName()
-			if strings.EqualFold(previousSelection, characterName) {
-				return fmt.Errorf("character %s not found", s.bot.ctx.CharacterCfg.CharacterName)
-			}
-			if strings.EqualFold(characterName, s.bot.ctx.CharacterCfg.CharacterName) {
-				s.bot.ctx.Logger.Info("Character found")
-				return nil
-			}
-
-			s.bot.ctx.HID.PressKey(win.VK_DOWN)
-			time.Sleep(time.Millisecond * 150)
-			previousSelection = characterName
-		}
+	if s.bot.ctx.CharacterCfg.CharacterName == "" {
+		return nil
 	}
 
-	return nil
+	s.bot.ctx.Logger.Info("Selecting character...", slog.String("target", s.bot.ctx.CharacterCfg.CharacterName))
+
+	// First try: use Panel-based GetCharacterList (more reliable, doesn't depend on hardcoded offsets)
+	time.Sleep(500 * time.Millisecond) // Wait for panels to fully load
+	charList := s.bot.ctx.GameReader.GameReader.GetCharacterList()
+	s.bot.ctx.Logger.Info("Character list from panels", slog.Any("characters", charList))
+
+	if len(charList) > 0 {
+		for idx, name := range charList {
+			if strings.EqualFold(name, s.bot.ctx.CharacterCfg.CharacterName) {
+				s.bot.ctx.Logger.Info("Character found in list", slog.Int("index", idx))
+				// Navigate to the character: press Up many times to go to top, then Down to target index
+				for range 20 {
+					s.bot.ctx.HID.PressKey(win.VK_UP)
+					time.Sleep(50 * time.Millisecond)
+				}
+				for range idx {
+					s.bot.ctx.HID.PressKey(win.VK_DOWN)
+					time.Sleep(100 * time.Millisecond)
+				}
+				time.Sleep(200 * time.Millisecond)
+				s.bot.ctx.Logger.Info("Character selected")
+				return nil
+			}
+		}
+		return fmt.Errorf("character %s not found in character list: %v", s.bot.ctx.CharacterCfg.CharacterName, charList)
+	}
+
+	// Fallback: use GetSelectedCharacterName with hardcoded offset
+	s.bot.ctx.Logger.Info("Panel-based character list empty, falling back to GetSelectedCharacterName")
+	previousSelection := ""
+	for {
+		characterName := s.bot.ctx.GameReader.GameReader.GetSelectedCharacterName()
+		s.bot.ctx.Logger.Debug("Current selected character", slog.String("name", characterName))
+		if strings.EqualFold(previousSelection, characterName) {
+			return fmt.Errorf("character %s not found", s.bot.ctx.CharacterCfg.CharacterName)
+		}
+		if strings.EqualFold(characterName, s.bot.ctx.CharacterCfg.CharacterName) {
+			s.bot.ctx.Logger.Info("Character found")
+			return nil
+		}
+
+		s.bot.ctx.HID.PressKey(win.VK_DOWN)
+		time.Sleep(time.Millisecond * 150)
+		previousSelection = characterName
+	}
 }
 
 func (s *baseSupervisor) SetWindowPosition(x, y int) {
