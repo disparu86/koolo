@@ -3,50 +3,22 @@ package memory
 import (
 	"encoding/binary"
 	"log"
+	"sync"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/skill"
 )
 
+var (
+	cachedBlobOffset      uintptr
+	cachedBlobSkillOffset uintptr
+	kbScanOnce            sync.Once
+	kbScanDone            bool
+)
+
 func (gd *GameReader) GetKeyBindings() data.KeyBindings {
-	blobAddr := gd.moduleBaseAddressPtr + 0x1DFFAF4
-	blobSkillsAddr := gd.moduleBaseAddressPtr + 0x2228030
+	blob, blobSkills := gd.readKeyBindingBlobs()
 
-	blob := gd.ReadBytesFromMemory(blobAddr, 0x500)
-	blobSkills := gd.ReadBytesFromMemory(blobSkillsAddr, 0x500)
-
-	// Check if ReadProcessMemory returned all zeros (anti-cheat protection)
-	allZero := true
-	for _, b := range blobSkills[:64] {
-		if b != 0 {
-			allZero = false
-			break
-		}
-	}
-
-	if allZero {
-		log.Printf("[d2go] KeyBindings: external read returned all zeros, trying in-process read...")
-		if inBlob, err := gd.Process.readMemoryViaRemoteThread(blobAddr, 0x500); err == nil {
-			blob = inBlob
-			log.Printf("[d2go] KeyBindings: blob in-process read OK, first 32 bytes: %02X", blob[:32])
-		} else {
-			log.Printf("[d2go] KeyBindings: blob in-process read failed: %v", err)
-		}
-		if inSkills, err := gd.Process.readMemoryViaRemoteThread(blobSkillsAddr, 0x500); err == nil {
-			blobSkills = inSkills
-			log.Printf("[d2go] KeyBindings: blobSkills in-process read OK, first 32 bytes: %02X", blobSkills[:32])
-		} else {
-			log.Printf("[d2go] KeyBindings: blobSkills in-process read failed: %v", err)
-		}
-	}
-
-	// Debug: log skill IDs
-	for i := 0; i < 16; i++ {
-		sid := binary.LittleEndian.Uint32(blobSkills[i*0x1c : i*0x1c+4])
-		if sid != 0 && sid != 0xFFFFFFFF {
-			log.Printf("[d2go] KeyBinding slot %d: skillID=%d (%s)", i, sid, skill.SkillNames[skill.ID(sid)])
-		}
-	}
 
 	skillsKB := [16]data.SkillBinding{}
 	for i := 0; i < 7; i++ {
@@ -237,4 +209,237 @@ func (gd *GameReader) GetKeyBindings() data.KeyBindings {
 			Key2: [2]byte{blob[0x492], blob[0x493]},
 		},
 	}
+}
+
+// readKeyBindingBlobs finds and reads the keybinding data blobs.
+// First tries hardcoded offsets, then scans memory to find them.
+func (gd *GameReader) readKeyBindingBlobs() (blob []byte, blobSkills []byte) {
+	initD2goLog()
+
+	// Try hardcoded offsets first
+	blobAddr := gd.moduleBaseAddressPtr + 0x1DFFAF4
+	blobSkillsAddr := gd.moduleBaseAddressPtr + 0x2228030
+
+	// If we previously found the correct offsets via scanning, use those
+	if cachedBlobOffset != 0 {
+		blobAddr = gd.moduleBaseAddressPtr + cachedBlobOffset
+		blobSkillsAddr = gd.moduleBaseAddressPtr + cachedBlobSkillOffset
+	}
+
+	blob = gd.ReadBytesFromMemory(blobAddr, 0x500)
+	blobSkills = gd.ReadBytesFromMemory(blobSkillsAddr, 0x500)
+
+	// Check if blob has any non-zero data
+	allZero := true
+	for _, b := range blob[:64] {
+		if b != 0 {
+			allZero = false
+			break
+		}
+	}
+
+	if allZero {
+		// Try in-process read at current addresses
+		if inBlob, err := gd.Process.readMemoryViaRemoteThread(blobAddr, 0x500); err == nil {
+			hasData := false
+			for _, b := range inBlob[:64] {
+				if b != 0 {
+					hasData = true
+					break
+				}
+			}
+			if hasData {
+				blob = inBlob
+				allZero = false
+			}
+		}
+		if !allZero {
+			if inSkills, err := gd.Process.readMemoryViaRemoteThread(blobSkillsAddr, 0x500); err == nil {
+				blobSkills = inSkills
+			}
+		}
+	}
+
+	// If still all zeros, try scanning for the keybinding blob
+	if allZero && !kbScanDone {
+		kbScanDone = true
+		log.Printf("[d2go] KeyBindings: scanning memory for keybinding blob...")
+		if foundOffset := gd.scanForKeyBindingBlob(); foundOffset != 0 {
+			cachedBlobOffset = foundOffset
+			// blobSkills is typically 0x42D53C bytes after blob in the data section
+			// Original: blobSkillsAddr - blobAddr = 0x2228030 - 0x1DFFAF4 = 0x42853C
+			cachedBlobSkillOffset = foundOffset + 0x42853C
+			blobAddr = gd.moduleBaseAddressPtr + cachedBlobOffset
+			blobSkillsAddr = gd.moduleBaseAddressPtr + cachedBlobSkillOffset
+			log.Printf("[d2go] KeyBindings: found blob at offset 0x%X, skills at offset 0x%X", cachedBlobOffset, cachedBlobSkillOffset)
+
+			blob = gd.ReadBytesFromMemory(blobAddr, 0x500)
+			blobSkills = gd.ReadBytesFromMemory(blobSkillsAddr, 0x500)
+
+			// Try in-process if external fails
+			isZero := true
+			for _, b := range blob[:64] {
+				if b != 0 {
+					isZero = false
+					break
+				}
+			}
+			if isZero {
+				if inBlob, err := gd.Process.readMemoryViaRemoteThread(blobAddr, 0x500); err == nil {
+					blob = inBlob
+				}
+				if inSkills, err := gd.Process.readMemoryViaRemoteThread(blobSkillsAddr, 0x500); err == nil {
+					blobSkills = inSkills
+				}
+			}
+			log.Printf("[d2go] KeyBindings: after scan, first 32 bytes: %02X", blob[:32])
+		} else {
+			log.Printf("[d2go] KeyBindings: scan found nothing, using defaults")
+			blob = gd.buildDefaultKeyBindingBlob()
+			blobSkills = make([]byte, 0x500) // No skill bindings
+		}
+	} else if allZero && kbScanDone && cachedBlobOffset == 0 {
+		// Already scanned and failed, use defaults
+		blob = gd.buildDefaultKeyBindingBlob()
+		blobSkills = make([]byte, 0x500)
+	}
+
+	// Debug: log skill IDs (first time only)
+	if cachedBlobOffset != 0 || !allZero {
+		for i := 0; i < 16; i++ {
+			if i*0x1c+4 > len(blobSkills) {
+				break
+			}
+			sid := binary.LittleEndian.Uint32(blobSkills[i*0x1c : i*0x1c+4])
+			if sid != 0 && sid != 0xFFFFFFFF {
+				log.Printf("[d2go] KeyBinding slot %d: skillID=%d", i, sid)
+			}
+		}
+	}
+
+	return blob, blobSkills
+}
+
+// scanForKeyBindingBlob scans the D2R module memory to find the keybinding data blob.
+// It looks for a region where belt keys (default 1,2,3,4) appear at the expected
+// offsets with 0x14-byte stride, which is a distinctive pattern.
+func (gd *GameReader) scanForKeyBindingBlob() uintptr {
+	// Belt keys are at blob+0x1B8, with stride 0x14 (20 bytes) for keys 1-4 (0x31-0x34)
+	// We scan the data section of the module for this pattern
+	const blobSize = 0x500
+	const beltOffset = 0x1B8
+	const stride = 0x14
+
+	// Scan range: the data section is typically in the second half of the module
+	scanStart := uintptr(0x1800000)
+	scanEnd := uintptr(gd.Process.moduleBaseSize) - uintptr(blobSize)
+	if scanEnd < scanStart {
+		scanEnd = uintptr(gd.Process.moduleBaseSize) - uintptr(blobSize)
+		scanStart = 0
+	}
+
+	// Read memory page by page and scan
+	pageSize := uintptr(4096)
+	for offset := scanStart; offset < scanEnd; offset += pageSize {
+		readSize := pageSize + uintptr(blobSize) // read extra to cover blob spanning pages
+		if offset+readSize > uintptr(gd.Process.moduleBaseSize) {
+			readSize = uintptr(gd.Process.moduleBaseSize) - offset
+		}
+
+		addr := gd.moduleBaseAddressPtr + offset
+		data := gd.ReadBytesFromMemory(addr, uint(readSize))
+		if len(data) < blobSize {
+			continue
+		}
+
+		// Scan this page for the belt key pattern
+		limit := len(data) - blobSize
+		for i := 0; i < limit; i++ {
+			// Check belt keys at expected offsets: 1,2,3,4 (0x31-0x34)
+			if data[i+beltOffset] == 0x31 &&
+				data[i+beltOffset+stride] == 0x32 &&
+				data[i+beltOffset+2*stride] == 0x33 &&
+				data[i+beltOffset+3*stride] == 0x34 {
+
+				// Additional validation: check other well-known default keybindings
+				// StandStill at 0x2BC should be Shift (0x10)
+				// Run at 0x294 should be 'R' (0x52) or Ctrl...
+				// Chat at 0x64 should be Enter (0x0D)
+				chatKey := data[i+0x64]
+				standStill := data[i+0x2BC]
+
+				// At least one more match for confirmation
+				if chatKey == 0x0D || standStill == 0x10 {
+					foundOffset := offset + uintptr(i)
+					log.Printf("[d2go] KeyBindings scan: found candidate at module+0x%X (belt=1234, chat=0x%02X, standStill=0x%02X)",
+						foundOffset, chatKey, standStill)
+					return foundOffset
+				}
+			}
+		}
+	}
+
+	// Fallback: try in-process scan
+	log.Printf("[d2go] KeyBindings scan: external scan failed, trying in-process...")
+	// Try reading via remote thread at various offsets around the old address
+	for delta := int(-0x200000); delta <= 0x200000; delta += 0x1000 {
+		testOffset := uintptr(int(0x1DFFAF4) + delta)
+		if testOffset >= uintptr(gd.Process.moduleBaseSize) {
+			continue
+		}
+		addr := gd.moduleBaseAddressPtr + testOffset
+		testData, err := gd.Process.readMemoryViaRemoteThread(addr, 0x500)
+		if err != nil {
+			continue
+		}
+
+		// Check belt keys
+		if len(testData) >= blobSize &&
+			testData[beltOffset] == 0x31 &&
+			testData[beltOffset+stride] == 0x32 &&
+			testData[beltOffset+2*stride] == 0x33 &&
+			testData[beltOffset+3*stride] == 0x34 {
+
+			log.Printf("[d2go] KeyBindings scan: found via in-process at module+0x%X", testOffset)
+			return testOffset
+		}
+	}
+
+	return 0
+}
+
+// buildDefaultKeyBindingBlob creates a keybinding blob with D2R default keybindings.
+// This is used as a fallback when the actual keybinding data cannot be found in memory.
+func (gd *GameReader) buildDefaultKeyBindingBlob() []byte {
+	blob := make([]byte, 0x500)
+
+	// Set default keybindings (D2R defaults)
+	// Each entry is 20 (0x14) bytes: Key1[2] + padding[8] + Key2[2] + padding[8]
+	setKey := func(offset int, key byte) {
+		if offset < len(blob) {
+			blob[offset] = key
+		}
+	}
+
+	setKey(0x00, 0x43)  // CharacterScreen: C
+	setKey(0x14, 0x49)  // Inventory: I
+	setKey(0x28, 0x50)  // PartyScreen: P
+	setKey(0x3C, 0x4D)  // MessageLog: M  (not standard but common)
+	setKey(0x50, 0x51)  // QuestLog: Q
+	setKey(0x64, 0x0D)  // Chat: Enter
+	setKey(0x78, 0x48)  // HelpScreen: H
+	setKey(0x8C, 0x09)  // Automap: Tab
+	setKey(0xF0, 0x54)  // SkillTree: T
+	setKey(0x1B8, 0x31) // Belt1: 1
+	setKey(0x1CC, 0x32) // Belt2: 2
+	setKey(0x1E0, 0x33) // Belt3: 3
+	setKey(0x1F4, 0x34) // Belt4: 4
+	setKey(0x294, 0x52) // Run: R
+	setKey(0x2BC, 0x10) // StandStill: Shift
+	setKey(0x2D0, 0x57) // ShowItems: W  (Alt in classic, W in D2R)
+	setKey(0x49C, 0x00) // ForceMove: unset by default
+
+	log.Printf("[d2go] KeyBindings: using DEFAULT keybindings (belt=1234, chat=Enter, standStill=Shift)")
+
+	return blob
 }
